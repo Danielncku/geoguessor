@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ brand_name }} Results</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body class="shell">
+  <main class="result-layout">
+    <section class="result-sidebar">
+      <a class="back-link" href="{{ url_for('index') }}">Back to upload</a>
+      <p class="eyebrow">Prediction Result</p>
+      <h1>{{ brand_name }}</h1>
+      <img class="preview-image" src="{{ image_url }}" alt="Uploaded preview" />
+
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span>Source</span>
+          <strong>{{ bundle.source_name }}</strong>
+        </div>
+        <div class="metric-card">
+          <span>Backbone</span>
+          <strong>{{ bundle.model_name }}</strong>
+        </div>
+        <div class="metric-card">
+          <span>Image size</span>
+          <strong>{{ bundle.image_size[0] }} x {{ bundle.image_size[1] }}</strong>
+        </div>
+        <div class="metric-card">
+          <span>Reference</span>
+          <strong>{{ bundle.game_id }}</strong>
+        </div>
+      </div>
+
+      {% if bundle.diagnostics %}
+      <div class="diagnostic-card">
+        <p class="eyebrow">Diagnostics</p>
+        <p>
+          Original top-1 confidence:
+          <strong>{{ '%.2f'|format(bundle.diagnostics.original_top1_confidence * 100) }}%</strong>
+        </p>
+        {% if bundle.diagnostics.script_hint %}
+        <p>
+          Script hint:
+          <strong>{{ bundle.diagnostics.script_hint.script }}</strong>
+          ({{ '%.2f'|format(bundle.diagnostics.script_hint.confidence) }})
+        </p>
+        {% endif %}
+        {% if bundle.diagnostics.heuristic_rerank %}
+        <p>
+          Heuristic rerank applied:
+          <strong>{{ bundle.diagnostics.heuristic_rerank.applied }}</strong>
+        </p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if bundle.explanation %}
+      <div class="explanation-card">
+        <p class="eyebrow">Explainability Report</p>
+        <p class="explanation-summary">{{ bundle.explanation.summary }}</p>
+        <div class="explanation-meta">
+          <span>Provider: {{ bundle.explanation.provider }}</span>
+          <span>Used LLM: {{ bundle.explanation.used_llm }}</span>
+        </div>
+        {% for item in bundle.explanation.rationale %}
+        <p class="explanation-point">{{ item }}</p>
+        {% endfor %}
+        <details class="prompt-preview">
+          <summary>Prompt preview</summary>
+          <pre>{{ bundle.explanation.prompt_preview }}</pre>
+        </details>
+      </div>
+      {% endif %}
+
+      <div class="result-table">
+        {% for item in predictions %}
+        <article class="prediction-card {% if loop.first %}is-top{% endif %}">
+          <div>
+            <p class="rank-label">Top {{ item.rank }}</p>
+            <h3>{{ item.label }}</h3>
+          </div>
+          <div class="prediction-meta">
+            <span>{{ '%.2f'|format(item.confidence * 100) }}%</span>
+            <span>{{ '%.5f'|format(item.lat) }}, {{ '%.5f'|format(item.lng) }}</span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      <div class="download-row">
+        <a class="secondary-button" href="{{ json_url }}">Download JSON</a>
+        <a class="secondary-button" href="{{ map_url }}">Open Standalone Map</a>
+      </div>
+    </section>
+
+    <section class="map-panel">
+      <div class="map-frame" id="result-map"></div>
+    </section>
+  </main>
+  {{ embedded_map|safe }}
+</body>
+</html>
