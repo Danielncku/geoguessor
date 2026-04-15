@@ -41,9 +41,8 @@ I wanted to go a bit further and make something that shows:
 ## Main Features
 
 ### Web UI
-<img width="854" height="877" alt="image" src="https://github.com/user-attachments/assets/35424c63-9db6-45f9-9446-dab3f171203d" />
 
-<img width="1614" height="813" alt="image" src="https://github.com/user-attachments/assets/4d5c5b06-671b-445c-b215-617b2d4ca59e" />
+
 
 - Upload an image from your local machine
 - Pick a backbone for inference
