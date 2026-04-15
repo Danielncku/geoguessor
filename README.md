@@ -1,67 +1,118 @@
 # AtlasScope Studio
 
-AtlasScope Studio 是你自己的本機影像地理預測專案。它可以直接讀取電腦上的圖片，使用視覺分類模型推測最可能的地點，並把 Top-K 候選結果畫在互動式地圖上。
+AtlasScope Studio is a local image geolocation project I built as a CS student project / experimentation playground.
 
-這個版本同時保留了原本的圖尋遊戲整合能力，但核心定位已經改成一個更完整的本地工具：
+The basic idea is pretty simple:
 
-- 本機圖片上傳 Web UI
-- 互動式地圖結果頁
-- 歷史紀錄保存
-- CLI 與 Web 共用同一套推論服務
-- 支援較新的 backbone 架構，並保留 legacy 權重相容模式
+1. Upload an image from your computer.
+2. Run a geolocation prediction model on it.
+3. Show the top candidate locations on a map.
+4. Explain why the system made that prediction instead of only showing raw scores.
 
-## 現在有哪些功能
+So this repo is not just a classifier demo. I tried to turn it into a small but usable local product with a web UI, prediction history, map output, and an explainability layer.
+
+## What This Project Does
+
+- Predicts likely locations from a local image
+- Shows Top-K candidate places with confidence scores
+- Plots predictions on an interactive map
+- Keeps recent prediction history
+- Adds OCR / script-based heuristics for reranking
+- Generates explainability output for every prediction
+- Supports optional LLM-generated reasoning for the UI
+- Still keeps the older Tuxun / GeoGuessr-style integration path
+
+## Why I Made It
+
+I wanted to explore a geolocation-style computer vision project, but I also wanted it to feel like an actual application instead of a notebook-only experiment.
+
+A lot of image prediction demos stop at:
+
+> "Here are the logits. Good luck."
+
+I wanted to go a bit further and make something that shows:
+
+- what the model predicted
+- how uncertain it is
+- whether text or script hints changed the ranking
+- how the result looks on a map
+- how an LLM can help turn technical signals into human-readable explanations
+
+## Main Features
 
 ### Web UI
+<img width="854" height="877" alt="image" src="https://github.com/user-attachments/assets/35424c63-9db6-45f9-9446-dab3f171203d" />
 
-- 從本機選取圖片
-- 選擇推論 backbone
-- 顯示原圖預覽
-- 顯示 Top-K 預測卡片
-- 直接把預測點畫在地圖上
-- 保留最近歷史結果
-- 顯示每次推論的 explainability report
-- 在有 API key 時用 LLM 產生自然語言解釋
+<img width="1614" height="813" alt="image" src="https://github.com/user-attachments/assets/4d5c5b06-671b-445c-b215-617b2d4ca59e" />
 
-### CLI
+- Upload an image from your local machine
+- Pick a backbone for inference
+- Preview the uploaded image
+- View Top-K predictions in a clean result layout
+- See prediction points on an embedded interactive map
+- Read a model explanation report
+- Inspect prompt preview and explanation provider info
 
-- `--image <path>` 直接對本地圖片推論
-- `--game-id <uuid>` 走圖尋整合模式
-- 自訂 `--backbone`、`--checkpoint`、`--topk`
+### Explainability
 
-### 輸出
+For each prediction, the app can show:
 
-- `outputs/predictions/*.json`
-- `outputs/maps/*.html`
-- `outputs/uploads/*`
-- `outputs/history.json`
+- original model confidence
+- OCR / script hint
+- whether heuristic reranking was applied
+- a natural language explanation
 
-## 專案結構
+If `OPENAI_API_KEY` is configured, the app can send the prediction bundle through an LLM and generate a more readable explanation.
+
+If not, it still shows a local fallback explanation, so the UI is always informative.
+
+### CLI Mode
+
+- Predict from a local image with `--image`
+- Predict from a Tuxun game with `--game-id`
+- Change backbone, checkpoint, and inference settings
+
+## Project Structure
 
 ```text
-app.py               本地 Web UI
-Main.py              CLI 入口
-services.py          共用服務層，統一預測 / 圖尋 / 歷史 / 輸出
-project_config.py    專案品牌與預設路徑設定
-history.py           預測歷史紀錄
-inference.py         推論流程與 PredictionBundle
-visualization.py     地圖輸出與可嵌入地圖元件
-Model.py             backbone 與 checkpoint 載入
-TuxunAgent.py        圖尋 API 與街景抓圖
-static/              Web 樣式
-templates/           Web 頁面
+app.py               Flask web app
+Main.py              CLI entry point
+services.py          shared prediction / output / history service layer
+inference.py         model inference pipeline
+scene_heuristics.py  OCR/script-based reranking logic
+explanations.py      LLM + fallback explanation layer
+visualization.py     map rendering
+history.py           prediction history storage
+project_config.py    project paths and defaults
+Model.py             backbone + checkpoint loading
+TuxunAgent.py        Tuxun API integration
+templates/           HTML templates
+static/              CSS styles
+models/              mapping + checkpoint files
 ```
 
-## 環境建議
+## Tech Stack
 
-建議使用：
+- Python
+- Flask
+- PyTorch
+- torchvision
+- Pillow
+- OpenCV
+- Tesseract OCR
+- Leaflet
+- OpenStreetMap
 
-- Python `3.10` 或 `3.11`
-- Windows / macOS / Linux 都可
+## Recommended Environment
 
-目前這個工作區的 Python 是 `3.14`，通常不適合直接安裝 PyTorch 現成套件，所以最好另外建立虛擬環境。
+I recommend using:
 
-## 安裝
+- Python `3.10` or `3.11`
+- a virtual environment
+
+I do **not** recommend using Python `3.14` for this project right now, because PyTorch package support can be annoying there.
+
+## Installation
 
 ```bash
 python -m venv .venv
@@ -69,86 +120,108 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## 啟動 Web UI
+## Run The Web App
 
 ```bash
 python app.py
 ```
 
-打開瀏覽器進入：
+Then open:
 
 ```text
 http://127.0.0.1:5000
 ```
 
-然後直接選本機圖片測試即可。
+## Run From CLI
 
-## 可解釋性與 LLM
-
-每次推論都會輸出：
-
-- 原始模型信心
-- OCR / script hint
-- heuristic rerank 是否介入
-- Explainability report
-
-如果沒有設定 LLM，UI 會顯示本地 fallback 解釋。
-
-如果你想啟用真正的 LLM 解釋，可以先設定：
-
-```bash
-set OPENAI_API_KEY=你的_api_key
-set OPENAI_MODEL=gpt-4.1-mini
-```
-
-如果你用的是相容 OpenAI 格式的其他服務，也可以加：
-
-```bash
-set OPENAI_BASE_URL=https://your-endpoint/v1
-```
-
-## 使用 CLI 預測本機圖片
+### Predict a local image
 
 ```bash
 python Main.py --image C:\path\to\sample.jpg --backbone legacy_mobilenet_v3
 ```
 
-## 使用 CLI 跑圖尋模式
+### Predict from Tuxun mode
 
-先把登入 cookie 放進 `cookie.txt`，再執行：
+Put your session cookie into `cookie.txt`, then run:
 
 ```bash
 python Main.py --game-id <GAME_ID> --backbone legacy_mobilenet_v3
 ```
 
-## Backbone 說明
+## LLM Explainability Setup
 
-目前架構支援：
+If you want the UI to generate explanation text through an LLM, set:
+
+```bash
+set OPENAI_API_KEY=your_api_key
+set OPENAI_MODEL=gpt-4.1-mini
+```
+
+If you are using an OpenAI-compatible endpoint, you can also set:
+
+```bash
+set OPENAI_BASE_URL=https://your-endpoint/v1
+```
+
+Without these variables, the project will still work and will use a local fallback explanation.
+
+## Current Model Situation
+
+The codebase supports multiple backbones:
 
 - `legacy_mobilenet_v3`
 - `convnext_tiny`
 - `efficientnet_v2_s`
 - `vit_b_16`
 
-但這個 repo 目前只有舊版 `v0.3.0.pth` 權重，所以真正可直接跑通的預設模式是：
+But right now, the repo only includes the old checkpoint:
+
+```text
+models/v0.3.0.pth
+```
+
+So the safest default is still:
 
 ```text
 legacy_mobilenet_v3
 ```
 
-如果你有自己訓練的新權重，可以這樣指定：
+If you train your own newer checkpoint, you can run something like:
 
 ```bash
-python Main.py --image C:\path\to\sample.jpg --backbone convnext_tiny --checkpoint models\your_convnext_checkpoint.pth
+python Main.py --image C:\path\to\sample.jpg --backbone convnext_tiny --checkpoint models\your_checkpoint.pth
 ```
 
-## 接下來還可以加什麼
+## Known Limitations
 
-這次我先把產品化基礎打好。如果你想繼續擴充，最值得加的功能是：
+This project is way more useful now than the original version, but it is still not magically accurate.
 
-1. 真正的訓練腳本與驗證流程，讓 `ConvNeXt` / `ViT` 有可用權重
-2. 熱點分布圖與候選點群聚，而不是只有 Top-K 點位
-3. EXIF 讀取與拍攝方向輔助
-4. 批次上傳資料夾，輸出整批結果報表
-5. 比對真實位置後計算距離誤差
-6. 生成可分享的報告頁
+Some of the main issues right now:
+
+- the legacy model is still weak on many real-world uploads
+- the confidence distribution is often too flat
+- OCR-based reranking helps in some cases, but it is still heuristic
+- true accuracy gains will need retraining, not only UI improvements
+
+So I would describe the current version as:
+
+> a much better product layer on top of a still-imperfect geolocation model
+
+## What I’d Improve Next
+
+If I keep iterating on this project, these are the next things I would build:
+
+1. A proper training pipeline for newer backbones like ConvNeXt or ViT
+2. Batch testing on a folder of images with evaluation reports
+3. Better OCR support for Chinese / multilingual signs
+4. Distance-based evaluation, not just classification ranking
+5. Heatmap-style geographic output instead of only Top-K markers
+6. Better prompt engineering for the explanation layer
+
+## Final Note
+
+This repo is basically me trying to make a computer vision project feel more like a real software product.
+
+I wanted the model output to be visible, debuggable, and explainable, not just "the answer is probably somewhere here."
+
+If you are also building CV side projects as a student, I think this kind of product thinking is actually really fun.
